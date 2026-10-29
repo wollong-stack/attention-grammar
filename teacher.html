@@ -34,6 +34,31 @@ textarea{width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid va
 .off td{opacity:.45}
 .fixc{font-family:Georgia,"Noto Serif KR",serif;font-size:13.5px}
 .fixc b{color:var(--ok)}
+/* 복습지 인쇄 */
+#printArea{display:none}
+@media print{
+  @page{size:A4;margin:12mm 13mm}
+  html,body{background:#fff!important}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block}
+}
+.rv-page{page-break-after:always;font-size:10.5pt;color:#222}
+.rv-page:last-child{page-break-after:auto}
+.rv-top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.2pt solid #6b1e2e;padding-bottom:2mm;margin-bottom:3mm}
+.rv-top .t{font-size:15pt;font-weight:700;color:#6b1e2e}
+.rv-top .ac{font-size:8.5pt;color:#8a776d;letter-spacing:1px}
+.rv-meta{display:flex;gap:6mm;font-size:10pt;margin-bottom:3mm}
+.rv-meta b{color:#6b1e2e}
+.rv-meta .sign{margin-left:auto;border:0.6pt solid #b9a690;padding:1mm 3mm;min-width:32mm}
+.rv-item{border:0.6pt solid #d9c8b2;border-radius:2mm;padding:2.5mm 3.5mm;margin-bottom:3mm;page-break-inside:avoid}
+.rv-h{display:flex;gap:3mm;align-items:center;flex-wrap:wrap;font-size:11pt}
+.rv-h .no{font-weight:700;color:#6b1e2e;font-size:12.5pt}
+.rv-h .ty{margin-left:auto;font-size:9pt;background:#f3ebe0;color:#6b1e2e;border-radius:3mm;padding:.5mm 2.5mm}
+.rv-tip{font-size:8.8pt;color:#5a4a44;background:#faf6f0;border-left:1.2pt solid #b08d57;padding:1.2mm 2.5mm;margin:1.8mm 0 1.5mm;line-height:1.45}
+.rv-q{font-size:9.6pt;margin-top:1.6mm;font-weight:600}
+.rv-q .blank{display:inline-block;border-bottom:0.6pt solid #888;min-width:55mm;margin-left:2mm}
+.rv-l{border-bottom:0.5pt solid #bbb;height:6.5mm}
+.rv-note{font-size:8.5pt;color:#8a776d;margin-top:2mm}
 </style>
 </head><body>
 <div class="top"><div class="ac">어텐션입시단과학원</div><h1>어법 1400제 <b>원장님 화면</b></h1></div>
@@ -53,6 +78,7 @@ textarea{width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid va
     <button data-t="live" class="on">실시간 채점</button>
     <button data-t="report">학생 리포트</button>
     <button data-t="students">학생 관리</button>
+    <button data-t="review">복습지 인쇄</button>
     <button data-t="qr">QR · 링크</button>
   </div>
 
@@ -87,6 +113,18 @@ textarea{width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid va
     <div class="card scroll"><table id="stTable"></table></div>
   </div>
 
+  <!-- 복습지 -->
+  <div id="t-review" class="hidden">
+    <div class="card bar2">
+      <select id="rvVol"></select>
+      <select id="rvSince"><option value="today">오늘 제출</option><option value="week">최근 7일</option><option value="all">전체 기간</option></select>
+      <select id="rvGrp"><option value="">전체 반</option></select>
+      <button class="btn" id="rvPrint" style="width:auto;padding:10px 18px">학생별 복습지 인쇄</button>
+      <button class="smallbtn" id="rvBlank">빈 양식 인쇄</button>
+    </div>
+    <div class="card muted" id="rvInfo">회차와 기간을 고르면 제출한 학생마다 한 장씩, 틀린 문항만 담긴 복습지가 만들어집니다. 정답 번호·유형·풀이 순서는 인쇄되고, 고친 표현과 이유는 학생이 직접 씁니다.</div>
+  </div>
+
   <!-- QR -->
   <div id="t-qr" class="hidden">
     <div class="card">
@@ -104,13 +142,14 @@ textarea{width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid va
   </div>
 </section>
 </div>
-<script src="qrcode.js"></script>
+<div id="printArea"></div>
+<script src="qrcode.js"></script><script src="tips.js"></script>
 <script src="config.js"></script><script src="app.js"></script>
 <script>
 let KEY = null, firstRun = false, timer = null, STU = [];
 try { KEY = sessionStorage.getItem('tkey'); } catch (e) {}
 const volOpts = () => Array.from({ length: APP.vols }, (_, i) => `<option value="${i + 1}">제 ${String(i + 1).padStart(2, '0')}회 (${i * 20 + 1}~${i * 20 + 20})</option>`).join('');
-['#lvVol', '#qrVol'].forEach(s => $(s).innerHTML = volOpts());
+['#lvVol', '#qrVol', '#rvVol'].forEach(s => $(s).innerHTML = volOpts());
 $('#lvVol').value = store.get('lvVol') || 1;
 const fmt = t => new Date(t).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 const studentUrl = () => location.href.replace(/teacher\.html.*$/, '');
@@ -130,12 +169,13 @@ $('#key').addEventListener('keydown', e => { if (e.key === 'Enter') enter($('#ke
 
 function tab(t) {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
-  ['live', 'report', 'students', 'qr'].forEach(x => $('#t-' + x).classList.toggle('hidden', x !== t));
+  ['live', 'report', 'students', 'review', 'qr'].forEach(x => $('#t-' + x).classList.toggle('hidden', x !== t));
   clearInterval(timer);
   if (t === 'live') { live(); timer = setInterval(live, 5000); }
   if (t === 'report') report();
   if (t === 'students') loadStudents().then(drawStudents);
   if (t === 'qr') drawQr();
+  if (t === 'review') rvInfo();
 }
 document.querySelector('.tabs').onclick = e => { const b = e.target.closest('button'); if (b) tab(b.dataset.t); };
 
@@ -175,7 +215,7 @@ async function live() {
   $('#lvTime').textContent = '5초마다 갱신 · ' + new Date().toLocaleTimeString('ko-KR');
 }
 ['#lvVol', '#lvSince', '#lvGrp'].forEach(s => $(s).onchange = live);
-function fillGrp() { const v = $('#lvGrp').value; $('#lvGrp').innerHTML = '<option value="">전체 반</option>' + [...new Set(STU.map(s => s.grp).filter(Boolean))].sort().map(x => `<option>${esc(x)}</option>`).join(''); $('#lvGrp').value = v; }
+function fillGrp() { const v2 = $('#rvGrp').value; $('#rvGrp').innerHTML = '<option value="">전체 반</option>' + [...new Set(STU.map(s => s.grp).filter(Boolean))].sort().map(x => `<option>${esc(x)}</option>`).join(''); $('#rvGrp').value = v2; const v = $('#lvGrp').value; $('#lvGrp').innerHTML = '<option value="">전체 반</option>' + [...new Set(STU.map(s => s.grp).filter(Boolean))].sort().map(x => `<option>${esc(x)}</option>`).join(''); $('#lvGrp').value = v; }
 $('#hide').onchange = async e => { try { await rpc('t_set_hide', { p_key: KEY, p_hide: e.target.checked }); toast(e.target.checked ? '학생 화면: 점수만 표시' : '학생 화면: 정답·해설 공개'); } catch (er) { toast(er.message, true); } };
 $('#lvSubs').onclick = async e => {
   const b = e.target.closest('[data-del]'); if (!b) return;
@@ -248,6 +288,62 @@ $('#bulkBtn').onclick = async () => {
   }
   await loadStudents(); drawStudents(); $('#bulk').value = keep.join('\n');
   toast(`${ok}명 추가` + (bad.length ? ` · 실패: ${bad.join(', ')}` : ''), bad.length > 0);
+};
+
+// ── 복습지 ──
+function rvSinceIso() { const v = $('#rvSince').value, d = new Date();
+  if (v === 'today') { d.setHours(0, 0, 0, 0); return d.toISOString(); }
+  if (v === 'week') return new Date(Date.now() - 7 * 864e5).toISOString();
+  return '2000-01-01T00:00:00Z'; }
+async function rvLoad() {
+  const vol = +$('#rvVol').value, g = $('#rvGrp').value;
+  const d = await rpc('t_live', { p_key: KEY, p_vol: vol, p_since: rvSinceIso() });
+  return { vol, d, subs: d.subs.filter(s => !g || s.grp === g) };
+}
+async function rvInfo() {
+  try { const { vol, subs } = await rvLoad(); $('#rvInfo').textContent = `제 ${String(vol).padStart(2, '0')}회 · 제출 ${subs.length}명 → 복습지 ${subs.length}장(학생별 1장 이상)이 인쇄됩니다.`; }
+  catch (e) { $('#rvInfo').textContent = e.message; }
+}
+['#rvVol', '#rvSince', '#rvGrp'].forEach(s => $(s).onchange = rvInfo);
+const L = n => '<div class="rv-l"></div>'.repeat(n);
+function rvItem(it, mine) {
+  const tip = (window.TIPS || {})[it.type] || '';
+  const chosen = mine ? `${CIRC[mine]}(유형: ${esc(it.types[mine - 1])})` : '';
+  return `<div class="rv-item"><div class="rv-h"><span class="no">${it.n}번</span>
+      <span>내 답 <b>${mine ? CIRC[mine] : '무응답'}</b> → 정답 <b>${CIRC[it.ans]}</b></span><span class="ty">정답 유형 · ${esc(it.type)}</span></div>
+    ${tip ? `<div class="rv-tip"><b>풀이 순서</b> ${esc(tip)}</div>` : ''}
+    <div class="rv-q">1. 정답 ${CIRC[it.ans]}의 「${esc(it.wrong_text)}」를 바르게 고치면? <span class="blank">&nbsp;</span></div>
+    <div class="rv-q">2. ${CIRC[it.ans]}이 틀린 이유를 위의 풀이 순서에 따라 내 말로 쓰기</div>${L(2)}
+    <div class="rv-q">3. ${mine ? `내가 고른 ${chosen}은 왜 맞는 표현인가?` : '답을 고르지 못한 이유 / 헷갈렸던 밑줄은?'}</div>${L(2)}</div>`;
+}
+function rvPage(name, grp, vol, score, total, when, body) {
+  return `<div class="rv-page"><div class="rv-top"><div><div class="ac">어텐션입시단과학원</div><div class="t">어법 1400제 복습지 · 제 ${String(vol).padStart(2, '0')}회</div></div>
+    <div class="ac">다음 수업 전까지 작성 → 원장님 확인</div></div>
+    <div class="rv-meta"><span>이름 <b>${esc(name)}</b></span>${grp ? `<span>반 ${esc(grp)}</span>` : ''}<span>점수 <b>${score}</b> / ${total}</span><span>${when}</span><span class="sign">원장 확인</span></div>${body}</div>`;
+}
+$('#rvPrint').onclick = async () => {
+  try {
+    const { vol, d, subs } = await rvLoad();
+    if (!subs.length) return toast('이 조건에 제출한 학생이 없습니다', true);
+    const base = (vol - 1) * 20;
+    $('#printArea').innerHTML = subs.map(s => {
+      const wr = d.items.filter(it => s.answers[it.n - base - 1] !== it.ans);
+      const body = wr.map(it => rvItem(it, s.answers[it.n - base - 1])).join('') +
+        `<div class="rv-item"><div class="rv-q">${wr.length ? '4.' : '1.'} 맞혔지만 헷갈렸던 문항 번호와 그 이유 (없으면 가장 어려웠던 문항)</div>${L(3)}</div>` +
+        (wr.length ? '' : '<div class="rv-note">이번 회 만점입니다. 위 칸만 작성하세요.</div>');
+      return rvPage(s.name, s.grp, vol, s.score, s.total, fmt(s.created_at), body);
+    }).join('');
+    setTimeout(() => window.print(), 300);
+  } catch (e) { toast(e.message, true); }
+};
+$('#rvBlank').onclick = () => {
+  const blankItem = `<div class="rv-item"><div class="rv-h"><span class="no">____번</span><span>내 답 ____ → 정답 ____</span><span class="ty">정답 유형 · ______________</span></div>
+    <div class="rv-q">1. 틀린 표현 → 고친 표현 <span class="blank">&nbsp;</span></div>
+    <div class="rv-q">2. 정답이 틀린 이유 (풀이 순서에 따라 내 말로)</div>${L(2)}
+    <div class="rv-q">3. 내가 고른 밑줄은 왜 맞는 표현인가?</div>${L(2)}</div>`;
+  $('#printArea').innerHTML = `<div class="rv-page"><div class="rv-top"><div><div class="ac">어텐션입시단과학원</div><div class="t">어법 1400제 복습지 · 제 ____회</div></div><div class="ac">다음 수업 전까지 작성 → 원장님 확인</div></div>
+    <div class="rv-meta"><span>이름 ____________</span><span>점수 ____ / 20</span><span class="sign">원장 확인</span></div>${blankItem.repeat(4)}</div>`;
+  setTimeout(() => window.print(), 300);
 };
 
 // ── QR ──
