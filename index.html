@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>어법 1400제 답 입력</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<div class="top"><div class="ac">어텐션입시단과학원</div><h1>어법 1400제 <b id="volT"></b></h1></div>
+<div class="wrap">
+
+<!-- 1. 로그인 -->
+<section id="s-login" class="hidden">
+  <div class="card">
+    <p class="lbl">이름</p>
+    <select id="name"><option value="">불러오는 중…</option></select>
+    <p class="lbl" style="margin-top:14px">비밀번호 (숫자 4자리)</p>
+    <input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
+    <div class="err" id="loginErr"></div>
+    <button class="btn" id="loginBtn">시작하기</button>
+  </div>
+</section>
+
+<!-- 2. 답 입력 -->
+<section id="s-ans" class="hidden">
+  <div class="card" id="volPick">
+    <p class="lbl">회차 선택</p><select id="volSel"></select>
+  </div>
+  <div class="who"><span id="whoName"></span><a href="#" id="logout">다른 학생</a></div>
+  <div class="prog"><span id="cnt">0/20</span><div class="bar"><i id="barI"></i></div></div>
+  <div class="card" id="rows" style="padding:4px 14px"></div>
+  <button class="btn" id="toConfirm" disabled>답안 확인</button>
+</section>
+
+<!-- 3. 확인 -->
+<section id="s-confirm" class="hidden">
+  <div class="card">
+    <p class="lbl">시험지에 표시한 답과 같은지 한 번 더 확인하세요. 제출하면 고칠 수 없습니다.</p>
+    <div class="grid" id="cgrid"></div>
+  </div>
+  <button class="btn" id="submit">제출하기</button>
+  <button class="btn ghost" id="back">돌아가서 고치기</button>
+</section>
+
+<!-- 4. 결과 -->
+<section id="s-result" class="hidden">
+  <div class="card score"><div class="big" id="sc"></div><div class="note" id="scNote"></div></div>
+  <div class="card" id="wrongBox"></div>
+  <button class="btn ghost" id="refresh" style="display:none">결과 다시 불러오기</button>
+</section>
+
+</div>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+const qs = new URLSearchParams(location.search);
+let VOL = parseInt(qs.get('vol')) || null;
+let me = store.get('me');
+let ans = {};
+const show = id => document.querySelectorAll('section').forEach(s => s.classList.toggle('hidden', s.id !== id));
+const draftKey = () => 'draft_' + (me && me.id) + '_' + VOL;
+
+function setVol(v) {
+  VOL = v; $('#volT').textContent = v ? '제 ' + String(v).padStart(2, '0') + '회' : '';
+  $('#volPick').classList.toggle('hidden', !!parseInt(qs.get('vol')));
+  ans = store.get(draftKey()) || {};
+  drawRows();
+}
+
+async function loadNames() {
+  try {
+    const list = await rpc('list_students');
+    const groups = {};
+    list.forEach(s => (groups[s.grp || ''] = groups[s.grp || ''] || []).push(s));
+    $('#name').innerHTML = '<option value="">이름을 고르세요</option>' + Object.keys(groups).map(g =>
+      (g ? `<optgroup label="${esc(g)}">` : '') + groups[g].map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('') + (g ? '</optgroup>' : '')).join('');
+  } catch (e) { $('#loginErr').textContent = e.message; }
+}
+
+async function login() {
+  const id = $('#name').value, pin = $('#pin').value.trim();
+  $('#loginErr').textContent = '';
+  if (!id) return $('#loginErr').textContent = '이름을 고르세요';
+  if (!/^\d{4}$/.test(pin)) return $('#loginErr').textContent = '비밀번호 4자리를 입력하세요';
+  $('#loginBtn').disabled = true;
+  try { const r = await rpc('check_pin', { p_student: id, p_pin: pin }); me = { id, name: r.name, pin }; store.set('me', me); startAnswer(); }
+  catch (e) { $('#loginErr').textContent = e.message; }
+  $('#loginBtn').disabled = false;
+}
+
+function startAnswer() {
+  $('#whoName').textContent = me.name + ' 학생';
+  if (!VOL) { $('#volSel').value = ''; }
+  setVol(VOL); show('s-ans');
+}
+
+function drawRows() {
+  if (!VOL) { $('#rows').innerHTML = '<p class="note" style="padding:12px 0">위에서 회차를 고르세요.</p>'; updCount(); return; }
+  $('#rows').innerHTML = range(VOL).map(n => `<div class="row"><span class="qn">${n}</span><div class="ch">` +
+    [1, 2, 3, 4, 5].map(c => `<button data-n="${n}" data-c="${c}" class="${ans[n] === c ? 'on' : ''}">${CIRC[c]}</button>`).join('') + '</div></div>').join('');
+  updCount();
+}
+function updCount() {
+  const k = VOL ? range(VOL).filter(n => ans[n]).length : 0;
+  $('#cnt').textContent = k + '/20'; $('#barI').style.width = k * 5 + '%'; $('#toConfirm').disabled = k < 20;
+  $('#toConfirm').textContent = k < 20 ? `답안 확인 (${20 - k}개 남음)` : '답안 확인';
+}
+$('#rows').addEventListener('click', e => {
+  const b = e.target.closest('button[data-n]'); if (!b) return;
+  const n = +b.dataset.n, c = +b.dataset.c;
+  ans[n] = c; store.set(draftKey(), ans);
+  b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  updCount();
+});
+
+$('#toConfirm').onclick = () => {
+  $('#cgrid').innerHTML = range(VOL).map(n => `<div>${n}<b>${CIRC[ans[n]] || '?'}</b></div>`).join('');
+  show('s-confirm'); scrollTo(0, 0);
+};
+$('#back').onclick = () => show('s-ans');
+$('#submit').onclick = async () => {
+  $('#submit').disabled = true;
+  try {
+    const r = await rpc('submit_answers', { p_student: me.id, p_pin: me.pin, p_vol: VOL, p_answers: range(VOL).map(n => ans[n]) });
+    store.del(draftKey()); drawResult(r); if (r.already) toast('이미 제출한 회차라 처음 제출한 결과를 보여 줍니다');
+  } catch (e) { toast(e.message, true); }
+  $('#submit').disabled = false;
+};
+
+function drawResult(r) {
+  show('s-result'); scrollTo(0, 0);
+  $('#sc').innerHTML = `${r.score}<small> / ${r.total}</small>`;
+  $('#refresh').style.display = r.hidden ? 'block' : 'none';
+  if (r.hidden) {
+    $('#scNote').textContent = '틀린 문항과 정답은 해설 시간에 공개됩니다.';
+    $('#wrongBox').innerHTML = '<p class="note">선생님이 정답을 공개하면 아래 버튼을 누르세요.</p>'; return;
+  }
+  const wrong = r.items.filter(i => !i.ok);
+  $('#scNote').textContent = wrong.length ? `틀린 문항 ${wrong.length}개: ${wrong.map(i => i.n).join(', ')}` : '모두 맞혔습니다!';
+  $('#wrongBox').innerHTML = (wrong.length ? '<p class="lbl">틀린 문항 다시 보기</p>' : '<p class="note">틀린 문항이 없습니다.</p>') + wrong.map(i => `
+    <div class="wr"><div class="h"><span>${i.n}번</span><em style="font-style:normal">내 답 ${CIRC[i.mine]} → 정답 ${CIRC[i.ans]}</em></div>
+      <div class="fix">${esc(i.wrong_text)} → <b>${esc(i.fix_text)}</b></div>
+      <span class="tag">정답 유형 · ${esc(i.type)}</span><span class="tag alt">${CIRC[i.mine]}은 맞는 표현 · ${esc(i.mine_type)}</span>
+    </div>`).join('');
+}
+$('#refresh').onclick = async () => {
+  try { const r = await rpc('my_result', { p_student: me.id, p_pin: me.pin, p_vol: VOL }); if (r) drawResult(r); if (r && r.hidden) toast('아직 공개 전입니다'); }
+  catch (e) { toast(e.message, true); }
+};
+$('#logout').onclick = e => { e.preventDefault(); store.del('me'); me = null; $('#pin').value = ''; show('s-login'); };
+$('#loginBtn').onclick = login;
+$('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+$('#volSel').innerHTML = '<option value="">회차를 고르세요</option>' + Array.from({ length: APP.vols }, (_, i) =>
+  `<option value="${i + 1}">제 ${String(i + 1).padStart(2, '0')}회 (${i * 20 + 1}~${i * 20 + 20}번)</option>`).join('');
+$('#volSel').onchange = e => setVol(parseInt(e.target.value) || null);
+
+(async () => {
+  loadNames();
+  if (me) { try { await rpc('check_pin', { p_student: me.id, p_pin: me.pin }); return startAnswer(); } catch (e) { store.del('me'); me = null; } }
+  show('s-login'); setVol(VOL);
+})();
+</script>
+</body></html>

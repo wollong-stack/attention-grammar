@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>어법 1400제 원장님 화면</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.wrap{max-width:1100px}
+.tabs{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:var(--card);padding:9px 16px;border-radius:20px;cursor:pointer;font-size:15px}
+.tabs button.on{background:var(--m);color:#fff;border-color:var(--m)}
+.bar2{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.bar2 select,.bar2 input{width:auto;font-size:15px;padding:9px 10px}
+.kpi{display:flex;gap:12px;flex-wrap:wrap}
+.kpi div{flex:1;min-width:120px;background:var(--l);border-radius:12px;padding:12px 14px}
+.kpi b{display:block;font-size:26px;color:var(--m)}
+.kpi span{font-size:13px;color:var(--mute)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:600;color:var(--mute);font-size:12.5px;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.num{font-variant-numeric:tabular-nums}
+.rate{display:flex;align-items:center;gap:8px;min-width:120px}
+.rate i{display:block;height:8px;border-radius:4px;background:var(--bad);opacity:.8}
+.rate.g i{background:var(--ok)}
+.dist{display:flex;gap:4px}
+.dist span{min-width:30px;text-align:center;border-radius:6px;padding:3px 0;font-size:13px;background:var(--l);color:var(--mute)}
+.dist span.a{background:var(--ok);color:#fff}
+.dist span.top{background:var(--bad);color:#fff}
+.smallbtn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px}
+.switch{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;user-select:none}
+.switch input{width:auto}
+.scroll{overflow-x:auto}
+textarea{width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--t);min-height:110px}
+.muted{color:var(--mute);font-size:13px}
+.off td{opacity:.45}
+.fixc{font-family:Georgia,"Noto Serif KR",serif;font-size:13.5px}
+.fixc b{color:var(--ok)}
+</style>
+</head><body>
+<div class="top"><div class="ac">어텐션입시단과학원</div><h1>어법 1400제 <b>원장님 화면</b></h1></div>
+<div class="wrap">
+
+<section id="s-login">
+  <div class="card" style="max-width:420px">
+    <p class="lbl" id="loginLbl">원장님 비밀번호</p>
+    <input id="key" type="password" autocomplete="current-password">
+    <div class="err" id="loginErr"></div>
+    <button class="btn" id="loginBtn">들어가기</button>
+  </div>
+</section>
+
+<section id="s-main" class="hidden">
+  <div class="tabs">
+    <button data-t="live" class="on">실시간 채점</button>
+    <button data-t="report">학생 리포트</button>
+    <button data-t="students">학생 관리</button>
+    <button data-t="qr">QR · 링크</button>
+  </div>
+
+  <!-- 실시간 -->
+  <div id="t-live">
+    <div class="card bar2">
+      <select id="lvVol"></select>
+      <select id="lvGrp"><option value="">전체 반</option></select>
+      <select id="lvSince"><option value="today">오늘 제출</option><option value="2h">최근 2시간</option><option value="all">전체 기간</option></select>
+      <label class="switch"><input type="checkbox" id="hide"> 학생에게 정답 숨김 (해설 전까지 점수만)</label>
+      <span class="muted" id="lvTime" style="margin-left:auto"></span>
+    </div>
+    <div class="card kpi" id="lvKpi"></div>
+    <div class="card scroll"><p class="lbl">문항별 (오답률 높은 순)</p><table id="lvItems"></table></div>
+    <div class="card scroll"><p class="lbl">학생별</p><table id="lvSubs"></table></div>
+    <div class="card"><p class="lbl">미제출</p><div id="lvNone" class="muted"></div></div>
+  </div>
+
+  <!-- 리포트 -->
+  <div id="t-report" class="hidden">
+    <div class="card bar2"><select id="rpStu"></select></div>
+    <div id="rpBody"></div>
+  </div>
+
+  <!-- 학생 관리 -->
+  <div id="t-students" class="hidden">
+    <div class="card">
+      <p class="lbl">학생 여러 명 한 번에 추가 — 한 줄에 <b>이름, PIN 4자리, 반</b> (반은 생략 가능)</p>
+      <textarea id="bulk" placeholder="김민준, 1234, 고2A&#10;이서연, 5678, 고2A"></textarea>
+      <button class="btn" id="bulkBtn" style="max-width:220px">추가하기</button>
+    </div>
+    <div class="card scroll"><table id="stTable"></table></div>
+  </div>
+
+  <!-- QR -->
+  <div id="t-qr" class="hidden">
+    <div class="card">
+      <p class="lbl">학생 입력 주소 (회차별 링크는 뒤에 ?vol=번호)</p>
+      <p id="baseUrl" style="word-break:break-all;font-size:15px"></p>
+      <div class="bar2"><select id="qrVol"></select></div>
+      <div id="qrBox" style="margin-top:14px;text-align:center"></div>
+      <p class="muted" style="text-align:center" id="qrUrl"></p>
+    </div>
+    <div class="card">
+      <p class="lbl">원장님 비밀번호 바꾸기</p>
+      <input id="newKey" type="password" placeholder="새 비밀번호 (6자 이상)" style="max-width:320px">
+      <button class="btn" id="chgKey" style="max-width:220px">변경</button>
+    </div>
+  </div>
+</section>
+</div>
+<script src="qrcode.js"></script>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+let KEY = null, firstRun = false, timer = null, STU = [];
+try { KEY = sessionStorage.getItem('tkey'); } catch (e) {}
+const volOpts = () => Array.from({ length: APP.vols }, (_, i) => `<option value="${i + 1}">제 ${String(i + 1).padStart(2, '0')}회 (${i * 20 + 1}~${i * 20 + 20})</option>`).join('');
+['#lvVol', '#qrVol'].forEach(s => $(s).innerHTML = volOpts());
+$('#lvVol').value = store.get('lvVol') || 1;
+const fmt = t => new Date(t).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const studentUrl = () => location.href.replace(/teacher\.html.*$/, '');
+
+async function enter(k) {
+  try {
+    if (firstRun) await rpc('t_init', { p_key: k });
+    if (!await rpc('t_login', { p_key: k })) throw new Error('비밀번호가 틀렸습니다');
+    KEY = k; try { sessionStorage.setItem('tkey', k); } catch (e) {}
+    $('#s-login').classList.add('hidden'); $('#s-main').classList.remove('hidden');
+    $('#hide').checked = await rpc('t_get_hide', { p_key: KEY });
+    await loadStudents(); tab('live');
+  } catch (e) { $('#loginErr').textContent = e.message; KEY = null; }
+}
+$('#loginBtn').onclick = () => enter($('#key').value);
+$('#key').addEventListener('keydown', e => { if (e.key === 'Enter') enter($('#key').value); });
+
+function tab(t) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  ['live', 'report', 'students', 'qr'].forEach(x => $('#t-' + x).classList.toggle('hidden', x !== t));
+  clearInterval(timer);
+  if (t === 'live') { live(); timer = setInterval(live, 5000); }
+  if (t === 'report') report();
+  if (t === 'students') loadStudents().then(drawStudents);
+  if (t === 'qr') drawQr();
+}
+document.querySelector('.tabs').onclick = e => { const b = e.target.closest('button'); if (b) tab(b.dataset.t); };
+
+// ── 실시간 ──
+function sinceIso() {
+  const v = $('#lvSince').value, d = new Date();
+  if (v === 'today') { d.setHours(0, 0, 0, 0); return d.toISOString(); }
+  if (v === '2h') return new Date(Date.now() - 7200e3).toISOString();
+  return '2000-01-01T00:00:00Z';
+}
+async function live() {
+  const vol = +$('#lvVol').value; store.set('lvVol', vol);
+  let d; try { d = await rpc('t_live', { p_key: KEY, p_vol: vol, p_since: sinceIso() }); } catch (e) { return toast(e.message, true); }
+  const g = $('#lvGrp').value, subs = d.subs.filter(s => !g || s.grp === g), n = subs.length;
+  // 반을 고르면 그 반 학생 답안으로 선택 분포를 다시 계산
+  const items = d.items.map(it => ({ ...it, dist: [1, 2, 3, 4, 5].map(c => subs.filter(s => s.answers[it.n - (vol - 1) * 20 - 1] === c).length) }));
+  const done = new Set(subs.map(s => s.name + '|' + s.grp));
+  $('#lvNone').textContent = STU.filter(s => s.active && (!g || s.grp === g) && !done.has(s.name + '|' + s.grp)).map(s => s.name).join(', ') || '없음';
+  const avg = n ? subs.reduce((a, s) => a + s.score, 0) / n : 0;
+  const worst = items.map(it => ({ ...it, wrong: n - it.dist[it.ans - 1] })).sort((a, b) => b.wrong - a.wrong || a.n - b.n);
+  $('#lvKpi').innerHTML = `<div><b>${n}</b><span>제출 학생</span></div><div><b>${n ? avg.toFixed(1) : '-'}</b><span>평균 (20점 만점)</span></div>
+    <div><b>${n ? Math.max(...subs.map(s => s.score)) + ' / ' + Math.min(...subs.map(s => s.score)) : '-'}</b><span>최고 / 최저</span></div>
+    <div><b>${n ? worst.filter(w => w.wrong / n >= .5).length : '-'}</b><span>오답률 50% 이상 문항</span></div>`;
+  $('#lvItems').innerHTML = '<tr><th>번호</th><th>오답률</th><th>선택 분포 ①~⑤</th><th>정답 유형</th><th>교정</th></tr>' + worst.map(it => {
+    const r = n ? it.wrong / n : 0, mx = Math.max(...it.dist.filter((_, i) => i !== it.ans - 1));
+    return `<tr><td class="num"><b>${it.n}</b></td>
+      <td><div class="rate ${r < .3 ? 'g' : ''}"><i style="width:${Math.max(4, r * 90)}px"></i>${n ? Math.round(r * 100) + '%' : '-'}</div></td>
+      <td><div class="dist">${it.dist.map((c, i) => `<span class="${i === it.ans - 1 ? 'a' : (c && c === mx ? 'top' : '')}" title="${esc(it.types[i])}">${CIRC[i + 1]} ${c}</span>`).join('')}</div></td>
+      <td>${esc(it.type)}</td><td class="fixc">${esc(it.wrong_text)} → <b>${esc(it.fix_text)}</b></td></tr>`;
+  }).join('');
+  $('#lvSubs').innerHTML = '<tr><th>이름</th><th>반</th><th>점수</th><th>틀린 문항</th><th>제출</th><th></th></tr>' + (subs.map(s => {
+    const wr = items.filter(it => s.answers[it.n - (vol - 1) * 20 - 1] !== it.ans).map(it => it.n);
+    return `<tr><td><b>${esc(s.name)}</b></td><td>${esc(s.grp)}</td><td class="num"><b>${s.score}</b> / ${s.total}</td>
+      <td class="num muted">${wr.join(', ') || '-'}</td><td class="muted">${fmt(s.created_at)}</td>
+      <td><button class="smallbtn" data-del="${s.id}">삭제</button></td></tr>`;
+  }).join('') || '<tr><td colspan="6" class="muted">아직 제출이 없습니다</td></tr>');
+  $('#lvTime').textContent = '5초마다 갱신 · ' + new Date().toLocaleTimeString('ko-KR');
+}
+['#lvVol', '#lvSince', '#lvGrp'].forEach(s => $(s).onchange = live);
+function fillGrp() { const v = $('#lvGrp').value; $('#lvGrp').innerHTML = '<option value="">전체 반</option>' + [...new Set(STU.map(s => s.grp).filter(Boolean))].sort().map(x => `<option>${esc(x)}</option>`).join(''); $('#lvGrp').value = v; }
+$('#hide').onchange = async e => { try { await rpc('t_set_hide', { p_key: KEY, p_hide: e.target.checked }); toast(e.target.checked ? '학생 화면: 점수만 표시' : '학생 화면: 정답·해설 공개'); } catch (er) { toast(er.message, true); } };
+$('#lvSubs').onclick = async e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  if (!confirm('이 제출을 삭제할까요? 학생이 다시 제출할 수 있게 됩니다.')) return;
+  try { await rpc('t_submission_delete', { p_key: KEY, p_id: +b.dataset.del }); live(); } catch (er) { toast(er.message, true); }
+};
+
+// ── 리포트 ──
+async function report() {
+  try { await loadStudents(); } catch (e) {}
+  const grps = [...new Set(STU.filter(s => s.subs).map(s => s.grp || ''))].sort();
+  $('#rpStu').innerHTML = '<option value="">학생 선택</option><optgroup label="합계">' + '<option value="grp:*">전체 학생 합계</option>' + grps.map(g => `<option value="grp:${esc(g)}">${esc(g || '반 미지정')} 전체</option>`).join('') + '</optgroup><optgroup label="학생">' + STU.filter(s => s.subs).map(s => `<option value="${s.id}">${esc(s.name)} ${s.grp ? '(' + esc(s.grp) + ')' : ''} · ${s.subs}회</option>`).join('') + '</optgroup>';
+  $('#rpStu').value = store.get('rpStu') || '';
+  if ($('#rpStu').value) drawReport($('#rpStu').value); else $('#rpBody').innerHTML = '<div class="card muted">제출 기록이 있는 학생을 고르세요.</div>';
+}
+$('#rpStu').onchange = e => { store.set('rpStu', e.target.value); if (e.target.value) drawReport(e.target.value); };
+async function drawReport(id) {
+  let d; try { d = id.startsWith('grp:') ? await groupReport(id.slice(4)) : await rpc('t_report', { p_key: KEY, p_student: id }); } catch (e) { return toast(e.message, true); }
+  const tot = d.types.reduce((a, t) => a + t.tried, 0), hit = d.types.reduce((a, t) => a + t.hit, 0);
+  const weak = d.types.filter(t => t.tried >= 3 && t.hit / t.tried < .7).slice(0, 3);
+  const mis = [...d.types].filter(t => t.mis).sort((a, b) => b.mis - a.mis).slice(0, 3);
+  $('#rpBody').innerHTML = `
+    <div class="card kpi"><div><b>${d.history.length}</b><span>${d.group ? '제출 수 (합계)' : '푼 회차'}</span></div><div><b>${tot ? Math.round(hit / tot * 100) + '%' : '-'}</b><span>전체 정답률</span></div>
+      <div><b style="font-size:17px">${weak.map(w => esc(w.minor) + ' ' + Math.round(w.hit / w.tried * 100) + '%').join('<br>') || '<span style="font-size:14px;font-weight:400">아직 없음 (데이터가 쌓이면 표시)</span>'}</b><span>약점 유형 (3문항 이상 출제 · 정답률 70% 미만)</span></div>
+      <div><b style="font-size:17px">${mis.map(w => esc(w.minor) + ' ' + w.mis).join('<br>') || '-'}</b><span>맞는 표현을 틀렸다고 고른 유형</span></div></div>
+    <div class="card scroll"><p class="lbl">유형별 정답률 (낮은 순) · ‘오인’ = 이 유형의 맞는 표현을 틀렸다고 고른 횟수</p>
+      <table><tr><th>대분류</th><th>소분류</th><th>출제</th><th>정답</th><th>정답률</th><th>오인</th></tr>
+      ${d.types.map(t => { const r = t.hit / t.tried; return `<tr><td class="muted">${esc(t.major)}</td><td><b>${esc(t.minor)}</b></td><td class="num">${t.tried}</td><td class="num">${t.hit}</td>
+        <td><div class="rate ${r >= .7 ? 'g' : ''}"><i style="width:${Math.max(4, (1 - r) * 90)}px"></i>${Math.round(r * 100)}%</div></td><td class="num">${t.mis || ''}</td></tr>`; }).join('')}</table></div>
+    <div class="card scroll"><p class="lbl">제출 기록</p><table><tr>${d.group ? '<th>학생</th>' : ''}<th>회차</th><th>점수</th><th>일시</th></tr>
+      ${d.history.map(h => `<tr>${d.group ? `<td>${esc(h.name)}</td>` : ''}<td>제 ${String(h.vol).padStart(2, '0')}회</td><td class="num"><b>${h.score}</b> / ${h.total}</td><td class="muted">${fmt(h.created_at)}</td></tr>`).join('')}</table></div>`;
+}
+
+// 반 전체(또는 전체 학생) 합계: 학생별 리포트를 더해서 만듦
+async function groupReport(g) {
+  const list = STU.filter(s => s.subs && (g === '*' || (s.grp || '') === g));
+  const rs = await Promise.all(list.map(s => rpc('t_report', { p_key: KEY, p_student: s.id })));
+  const m = {};
+  rs.forEach(r => r.types.forEach(t => { const x = m[t.minor] = m[t.minor] || { major: t.major, minor: t.minor, tried: 0, hit: 0, mis: 0 }; x.tried += t.tried; x.hit += t.hit; x.mis += t.mis; }));
+  const types = Object.values(m).sort((a, b) => a.hit / a.tried - b.hit / b.tried || b.tried - a.tried);
+  const history = rs.flatMap((r, i) => r.history.map(h => ({ ...h, name: list[i].name }))).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return { types, history, group: true };
+}
+
+// ── 학생 관리 ──
+async function loadStudents() { STU = await rpc('t_students', { p_key: KEY }); fillGrp(); }
+function drawStudents() {
+  $('#stTable').innerHTML = '<tr><th>이름</th><th>PIN</th><th>반</th><th>제출</th><th>평균</th><th>최근</th><th>사용</th><th></th></tr>' + STU.map(s => `
+    <tr class="${s.active ? '' : 'off'}" data-id="${s.id}"><td><input value="${esc(s.name)}" data-f="name" style="width:110px;font-size:14px;padding:6px"></td>
+      <td><input value="${esc(s.pin)}" data-f="pin" maxlength="4" inputmode="numeric" style="width:70px;font-size:14px;padding:6px"></td>
+      <td><input value="${esc(s.grp)}" data-f="grp" style="width:90px;font-size:14px;padding:6px"></td>
+      <td class="num">${s.subs}</td><td class="num">${s.avg == null ? '-' : s.avg + '%'}</td><td class="muted">${s.last ? fmt(s.last) : '-'}</td>
+      <td><input type="checkbox" data-f="active" ${s.active ? 'checked' : ''} style="width:auto"></td>
+      <td><button class="smallbtn" data-save>저장</button></td></tr>`).join('');
+}
+$('#stTable').onclick = async e => {
+  if (!e.target.matches('[data-save]')) return;
+  const tr = e.target.closest('tr'), f = k => tr.querySelector(`[data-f="${k}"]`);
+  try {
+    await rpc('t_student_save', { p_key: KEY, p_id: tr.dataset.id, p_name: f('name').value, p_pin: f('pin').value, p_grp: f('grp').value, p_active: f('active').checked });
+    await loadStudents(); drawStudents(); toast('저장했습니다');
+  } catch (er) { toast(er.message, true); }
+};
+$('#bulkBtn').onclick = async () => {
+  const lines = $('#bulk').value.split('\n').map(l => l.split(/[,\t]/).map(x => x.trim())).filter(l => l[0]);
+  let ok = 0, bad = [], keep = [];
+  for (const [name, pin, grp] of lines) {
+    try { await rpc('t_student_save', { p_key: KEY, p_id: null, p_name: name, p_pin: pin || '', p_grp: grp || '', p_active: true }); ok++; }
+    catch (e) { bad.push(name + ' (' + e.message + ')'); keep.push([name, pin, grp].filter(x => x != null).join(', ')); }
+  }
+  await loadStudents(); drawStudents(); $('#bulk').value = keep.join('\n');
+  toast(`${ok}명 추가` + (bad.length ? ` · 실패: ${bad.join(', ')}` : ''), bad.length > 0);
+};
+
+// ── QR ──
+function drawQr() {
+  $('#baseUrl').textContent = studentUrl();
+  const u = studentUrl() + '?vol=' + $('#qrVol').value;
+  try { const q = qrcode(0, 'M'); q.addData(u); q.make(); $('#qrBox').innerHTML = q.createSvgTag({ cellSize: 6, margin: 2 }); } catch (e) { $('#qrBox').textContent = ''; }
+  $('#qrUrl').textContent = u;
+}
+$('#qrVol').onchange = drawQr;
+$('#chgKey').onclick = async () => {
+  try { await rpc('t_change_key', { p_key: KEY, p_new: $('#newKey').value }); KEY = $('#newKey').value; try { sessionStorage.setItem('tkey', KEY); } catch (e) {} $('#newKey').value = ''; toast('비밀번호를 바꿨습니다'); }
+  catch (e) { toast(e.message, true); }
+};
+
+(async () => {
+  try {
+    firstRun = !await rpc('t_has_key');
+    if (firstRun) { $('#loginLbl').textContent = '처음 사용: 원장님 비밀번호를 새로 정하세요 (6자 이상)'; $('#loginBtn').textContent = '비밀번호 정하고 시작'; }
+    else if (KEY) enter(KEY);
+  } catch (e) { $('#loginErr').textContent = e.message; }
+})();
+</script>
+</body></html>
